@@ -1,6 +1,6 @@
 import requests
 
-class Rancher:
+class RancherApi:
     def __init__(self, address, key, secret):
         self.address = address
         self.key = key

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from rancher import Rancher
-from kubernetes import client, config, watch
+from RancherApi import RancherApi
+from RancherProjectManagement import RancherProjectManagement
 import argparse
 
 def main():
@@ -15,9 +15,15 @@ def main():
     parser.add_argument('-t', '--project-name-annotation',
             default='rancher-project-mgmt.motus.com/project-name',
             help='The namespace annotation that this controller will check for and act upon')
-    parser.add_argument('-i', '--project-id-annotation',
+    parser.add_argument('-p', '--project-id-annotation',
             default='field.cattle.io/projectId',
             help='The annotation, typically controlled by Rancher, that this controller will update to assign namespaces to projects')
+    parser.add_argument('-d', '--default-cluster',
+            default='local',
+            help='The name of the cluster that new projects will be created in, by default')
+    parser.add_argument('-c', '--cluster-name-annotation',
+            default='rancher-project-mgmt.motus.com/cluster-name',
+            help='The annotation used to specify what cluster a project should be created in, if it doesn\'t already exist')
 
     args = parser.parse_args()
     
@@ -26,40 +32,15 @@ def main():
         args.rancher_secret = secret_file_handle.read()
         secret_file_handle.close()
 
-    rancher = Rancher(args.rancher_addr, args.rancher_key, args.rancher_secret)
-    config.load_kube_config()
-    kubeapi = client.CoreV1Api()
-    watcher = watch.Watch()
+    rancher = RancherApi(args.rancher_addr, args.rancher_key, args.rancher_secret)
 
-    for ns_event in watcher.stream(kubeapi.list_namespace):
-        # We don't care if it's not a modify event
-        if ns_event['type'] != 'MODIFIED':
-            continue
-        
-        # We don't care if we don't see our annotation
-        ns = ns_event['object']
-        annotations = ns.metadata.annotations
-        if args.project_name_annotation not in annotations:
-            continue
+    projectManager = RancherProjectManagement(rancher,
+                            args.project_name_annotation,
+                            args.project_id_annotation,
+                            args.default_cluster,
+                            args.cluster_name_annotation)
 
-        # Retrive the existing rancher project
-        project_name = annotations[args.project_name_annotation]
-        project = rancher.get_project(project_name)
-
-        # Create the rancher project if necessary
-        if project is None:
-            print(f'Namespace {ns.metadata.name} requested project named {project_name} which didn\'t exist, creating now')
-            project = rancher.create_project(project_name, 'local')
-        
-        # We don't need to do anything if it's already annotated correctly
-        project_id = project['id']
-        if args.project_id_annotation in annotations and annotations[args.project_id_annotation] == project_id:
-            continue
-
-        # Patch the project ID on there
-        print(f'Annotating namespace {ns.metadata.name} for requested project named {project_name} with its ID {project_id}')
-        annotations[args.project_id_annotation] = project_id
-        kubeapi.patch_namespace(ns.metadata.name, ns)
+    projectManager.watch()
 
 if __name__ == "__main__":
     main()
