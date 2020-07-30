@@ -11,19 +11,20 @@ class RancherProjectManagement:
         self.kubeapi = client.CoreV1Api()
 
     def watch(self):
+        # Check 'em all at startup
+        namespaces = self.kubeapi.list_namespace()
+        for ns in namespaces.items:
+            self.process_namespace(ns)
+
+        # Watch for more changes going forward
         watcher = watch.Watch()
-
         for ns_event in watcher.stream(self.kubeapi.list_namespace):
-            self.process_event(ns_event)
+            if ns_event['type'] == 'MODIFIED':
+                self.process_namespace(ns_event['object'])
 
-    def process_event(self, ns_event):
-        # We don't care if it's not a modify event
-        if ns_event['type'] != 'MODIFIED':
-            return
-        
+    def process_namespace(self, namespace):
         # We don't care if we don't see our annotation
-        ns = ns_event['object']
-        annotations = ns.metadata.annotations
+        annotations = namespace.metadata.annotations
         if self.project_name_annotation not in annotations:
             return
 
@@ -33,7 +34,7 @@ class RancherProjectManagement:
 
         # Create the rancher project if necessary
         if project is None:
-            print(f'Namespace {ns.metadata.name} requested project named {project_name} which didn\'t exist, creating now')
+            print(f'Namespace {namespace.metadata.name} requested project named {project_name} which didn\'t exist, creating now')
 
             # Check if there's a special cluster we're supposed to use
             cluster = self.default_cluster
@@ -48,6 +49,6 @@ class RancherProjectManagement:
             return
 
         # Patch the project ID on there
-        print(f'Annotating namespace {ns.metadata.name} for requested project named {project_name} with its ID {project_id}')
+        print(f'Annotating namespace {namespace.metadata.name} for requested project named {project_name} with its ID {project_id}')
         annotations[self.project_id_annotation] = project_id
-        self.kubeapi.patch_namespace(ns.metadata.name, ns)
+        self.kubeapi.patch_namespace(namespace.metadata.name, namespace)
