@@ -1,4 +1,6 @@
 from kubernetes import client, config, watch
+import requests
+from RancherProjectManager.RancherApi import RancherResponseError
 
 class RancherProjectManagement:
     def __init__(self, rancher, project_name_annotation, project_id_annotation, default_cluster, cluster_name_annotation):
@@ -19,8 +21,16 @@ class RancherProjectManagement:
         # Watch for more changes going forward
         watcher = watch.Watch()
         for ns_event in watcher.stream(self.kubeapi.list_namespace):
-            if ns_event['type'] == 'MODIFIED':
-                self.process_namespace(ns_event['object'])
+            try:
+                if ns_event['type'] == 'MODIFIED':
+                    self.process_namespace(ns_event['object'])
+            except (requests.HTTPError, RancherResponseError, ValueError, KeyError) as e:
+                print("ERROR processing namespace event - raw event: " + str(ns_event))
+                print(e)
+            except Exception as e:
+                print("FATAL ERROR processing namespace event - raw event: " + str(ns_event))
+                print(e)
+                raise
 
     def process_namespace(self, namespace):
         # We don't care if we don't see our annotation
