@@ -38,6 +38,8 @@ class RancherProjectManagement:
                 raise
 
     def process_namespace(self, namespace):
+        logging.info(f'Inspecting namespace {namespace.metadata.name}...')
+
         # We don't care if we don't see our annotation
         annotations = namespace.metadata.annotations
         if self.project_name_annotation not in annotations:
