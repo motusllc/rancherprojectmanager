@@ -6,9 +6,9 @@ name: CI
 # events but only for the master branch
 on:
   push:
-    branches: [ master ]
+    branches: [ '*' ]
   pull_request:
-    branches: [ master ]
+    branches: [ '*' ]
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -51,7 +51,7 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
         repository: motus/rancherprojectmanager
         tag_with_ref: true
-        tags: ${{env.BRANCH_NAME}}-${{github.RUN_NUMBER}}
+        tags: ${{env.BRANCH_NAME}}-${{github.RUN_NUMBER}},${{env.BRANCH_NAME}}-latest
         always_pull: true
         add_git_labels: true
         # Only push images for branch builds
