@@ -18,11 +18,13 @@ class RancherProjectManagement:
 
     def watch(self):
         # Check 'em all at startup
+        print("Starting up, checking all namespaces")
         namespaces = self.kubeapi.list_namespace()
         for ns in namespaces.items:
             self.process_namespace(ns)
 
         # Watch for more changes going forward
+        print("Watching for additional namespace changes")
         watcher = watch.Watch()
         for ns_event in watcher.stream(self.kubeapi.list_namespace):
             try:
