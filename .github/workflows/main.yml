@@ -51,7 +51,7 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
         repository: motus/rancherprojectmanager
         tag_with_ref: true
-        tags: $BRANCH_NAME-$GITHUB_RUN_NUMBER
+        tags: ${{env.BRANCH_NAME}}-${{github.RUN_NUMBER}}
         always_pull: true
         add_git_labels: true
         # Only push images for branch builds
