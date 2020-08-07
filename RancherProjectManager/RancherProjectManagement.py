@@ -18,7 +18,7 @@ class RancherProjectManagement:
 
     def watch(self):
         # Check 'em all at startup
-        print("Starting up, checking all namespaces")
+        print("Checking all namespaces")
         namespaces = self.kubeapi.list_namespace()
         for ns in namespaces.items:
             self.process_namespace(ns)

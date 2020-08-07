@@ -28,18 +28,19 @@ def main():
     args = parser.parse_args()
     
     if args.rancher_secret is None:
-        secret_file_handle = open("/var/rancher-project-mgmt/rancher-secret", "r")
+        rancher_key_file = '/var/rancher-project-mgmt/rancher-secret'
+        print(f'Loading rancher API key from {rancher_key_file}')
+        secret_file_handle = open(rancher_key_file, "r")
         args.rancher_secret = secret_file_handle.read()
         secret_file_handle.close()
 
+    print('Starting up...')
     rancher = RancherApi(args.rancher_addr, args.rancher_key, args.rancher_secret)
-
     projectManager = RancherProjectManagement(rancher,
                             args.project_name_annotation,
                             args.project_id_annotation,
                             args.default_cluster,
                             args.cluster_name_annotation)
-
     projectManager.watch()
 
 if __name__ == "__main__":
