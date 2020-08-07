@@ -1,0 +1,2 @@
+
+All set! Visit the README for info on annotating your namespaces: https://github.com/motusllc/rancherprojectmanager/blob/master/README.md

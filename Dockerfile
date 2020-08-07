@@ -11,4 +11,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN rm requirements.txt
 
 RUN chmod +x ./main.py
-ENTRYPOINT "./main.py"
+ENTRYPOINT [ "./main.py" ]
