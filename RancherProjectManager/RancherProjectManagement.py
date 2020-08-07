@@ -1,6 +1,6 @@
 from kubernetes import client, config, watch
 import requests
-from RancherProjectManager.RancherApi import RancherResponseError
+from .RancherApi import RancherResponseError
 
 class RancherProjectManagement:
     def __init__(self, rancher, project_name_annotation, project_id_annotation, default_cluster, cluster_name_annotation):

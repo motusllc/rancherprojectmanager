@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from RancherApi import RancherApi
-from RancherProjectManagement import RancherProjectManagement
+from RancherProjectManager.RancherApi import RancherApi
+from RancherProjectManager.RancherProjectManagement import RancherProjectManagement
 import argparse
 
 def main():
