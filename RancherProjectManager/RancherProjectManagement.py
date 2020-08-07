@@ -9,7 +9,10 @@ class RancherProjectManagement:
         self.project_id_annotation = project_id_annotation
         self.default_cluster = default_cluster
         self.cluster_name_annotation = cluster_name_annotation
-        config.load_kube_config()
+        if os.getenv('KUBERNETES_SERVICE_HOST'):
+            config.load_incluster_config()
+        else:
+            config.load_kube_config()
         self.kubeapi = client.CoreV1Api()
 
     def watch(self):
