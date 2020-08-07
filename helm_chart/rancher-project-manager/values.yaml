@@ -1,0 +1,68 @@
+# Default values for rancher-project-manager.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Let the user set these app-specific values:
+# rancherprojectmanager:
+#   rancherAddress: https://rancher.sandbox.motus.com/v3                 # Required
+#   rancherKey: token-abc123                                             # Required
+#   secretName: myRancherKubeSecret                                      # Required
+#   projectNameAnnotation: rancher-project-mgmt.motus.com/project-name   # Defaults to this value
+#   projectIdAnnotation: field.cattle.io/projectId                       # Defaults to this value
+#   defaultCluster: local                                                # Defaults to this value
+#   clusterNameAnnotation: rancher-project-mgmt.motus.com/cluster-name   # Defaults to this value
+
+
+# All values below are generic Deployment + ServiceAccount values. They can be overriden, probably will never need to be
+
+replicaCount: 1
+
+image:
+  repository: motus/rancherprojectmanager
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: latest
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

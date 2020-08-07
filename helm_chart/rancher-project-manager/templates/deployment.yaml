@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rancher-project-manager.fullname" . }}
+  labels:
+    {{- include "rancher-project-manager.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "rancher-project-manager.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "rancher-project-manager.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "rancher-project-manager.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.rancherprojectmanager.containerCommand }}
+          command: {{ .Values.rancherprojectmanager.containerCommand }}
+          {{- end }}
+          args: 
+            - --rancher-addr={{ required "rancherprojectmanager.rancherAddress must be specified - should resemble https://rancher.sandbox.motus.com/v3" .Values.rancherprojectmanager.rancherAddress }}
+            - --rancher-key={{ required "rancherprojectmanager.rancherKey must be specified - should resemble token-abc123" .Values.rancherprojectmanager.rancherKey }}
+            - --project-name-annotation={{ default "rancher-project-mgmt.motus.com/project-name" .Values.rancherprojectmanager.projectNameAnnotation }}
+            - --project-id-annotation={{ default "field.cattle.io/projectId" .Values.rancherprojectmanager.projectIdAnnotation }}
+            - --default-cluster={{ default "local" .Values.rancherprojectmanager.defaultCluster }}
+            - --cluster-name-annotation={{ default "rancher-project-mgmt.motus.com/cluster-name" .Values.rancherprojectmanager.clusterNameAnnotation }}
+          ports: []
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: rancher-project-mgmt-secrets
+              mountPath: "/var/rancher-project-mgmt"
+              readOnly: true
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: rancher-project-mgmt-secrets
+          secret:
+            secretName: {{ required "rancherprojectmanager.secretName is required" .Values.rancherprojectmanager.secretName }}
