@@ -6,6 +6,7 @@ This app watches for namespace-modification events. If a namespace appears with 
 
 If no project by that name exists, it's created. 
 
+Project owners can also be managed with the --owners-annotation, see below. For this functionality to work, Rancher's API requires that this app use an auth token corresponding to a user account that has rights over the auth system being used. Thus, a local admin account's key can successfully handle Rancher-local users, but for Azure AD auth, the Rancher token needs to be created for the user who setup the Azure AD integration. 
 
 # Install via Helm
 
@@ -42,6 +43,7 @@ $ ./main.py --help
 usage: main.py [-h] -a RANCHER_ADDR -k RANCHER_KEY [-s RANCHER_SECRET]
                [-t PROJECT_NAME_ANNOTATION] [-p PROJECT_ID_ANNOTATION]
                [-d DEFAULT_CLUSTER] [-c CLUSTER_NAME_ANNOTATION]
+               [-o OWNERS_ANNOTATION]
 
 Watches and annotates namespaces to assign them to Rancher projects
 
@@ -50,24 +52,32 @@ optional arguments:
   -a RANCHER_ADDR, --rancher-addr RANCHER_ADDR
                         Address of your rancher API. Include the protocol and
                         API path element (ex.
-                        https://rancher.sandbox.motus.com/v3)
+                        https://rancher.sandbox.motus.com/v3) (default: None)
   -k RANCHER_KEY, --rancher-key RANCHER_KEY
-                        The name of your rancher API key (username)
+                        The name of your rancher API key (username) (default:
+                        None)
   -s RANCHER_SECRET, --rancher-secret RANCHER_SECRET
                         The secret token of your rancher API key (password).
                         If omitted, this can instead loaded from a secret
-                        mounted at /var/rancher-project-mgmt
+                        mounted at /var/rancher-project-mgmt (default: None)
   -t PROJECT_NAME_ANNOTATION, --project-name-annotation PROJECT_NAME_ANNOTATION
                         The namespace annotation that this controller will
-                        check for and act upon
+                        check for and act upon (default: rancher-project-
+                        mgmt.motus.com/project-name)
   -p PROJECT_ID_ANNOTATION, --project-id-annotation PROJECT_ID_ANNOTATION
                         The annotation, typically controlled by Rancher, that
                         this controller will update to assign namespaces to
-                        projects
+                        projects (default: field.cattle.io/projectId)
   -d DEFAULT_CLUSTER, --default-cluster DEFAULT_CLUSTER
                         The name of the cluster that new projects will be
-                        created in, by default
+                        created in, by default (default: local)
   -c CLUSTER_NAME_ANNOTATION, --cluster-name-annotation CLUSTER_NAME_ANNOTATION
                         The annotation used to specify what cluster a project
                         should be created in, if it doesn't already exist
+                        (default: rancher-project-mgmt.motus.com/cluster-name)
+  -o OWNERS_ANNOTATION, --owners-annotation OWNERS_ANNOTATION
+                        The annotation that holds a comma-separated list of
+                        groups or usernames, who will be granted owner on the
+                        project for a namespace (default: rancher-project-
+                        mgmt.motus.com/owners)
 ```
