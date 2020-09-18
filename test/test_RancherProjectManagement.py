@@ -3,11 +3,16 @@ from kubernetes.client.models.v1_namespace import V1Namespace
 from kubernetes.client.models.v1_object_meta import V1ObjectMeta
 from kubernetes.client.models.v1_namespace_list import V1NamespaceList
 import unittest
+import logging
 from unittest.mock import MagicMock, call
 from RancherProjectManager.RancherApi import RancherApi, RancherResponseError
 from RancherProjectManager.RancherProjectManagement import RancherProjectManagement
 
 class TestRancherProjectManagement(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        logging.basicConfig(level=logging.INFO, filename='/dev/null')
+
     def setUp(self):
         config.load_kube_config = MagicMock()
         watch.Watch = MagicMock()
@@ -16,7 +21,8 @@ class TestRancherProjectManagement(unittest.TestCase):
                 'project-name-annotation',
                 'project-id-annotation',
                 'default-cluster',
-                'cluster-name-annotation')
+                'cluster-name-annotation',
+                'owners-annotation')
         self.sut.kubeapi = MagicMock()
 
     def test_process_namespace_no_annotations_noop(self):

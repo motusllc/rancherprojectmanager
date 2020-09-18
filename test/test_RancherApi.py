@@ -2,9 +2,14 @@ import unittest
 from unittest.mock import MagicMock
 from io import BytesIO
 import requests
+import logging
 from RancherProjectManager.RancherApi import RancherApi, RancherResponseError
 
 class TestRancherApi(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        logging.basicConfig(level=logging.INFO, filename='/dev/null')
+
     def setUp(self):
         requests.get = MagicMock()
         requests.post = MagicMock()
@@ -16,9 +21,9 @@ class TestRancherApi(unittest.TestCase):
         happy_response.raw = BytesIO(b"{\"data\":\"mydata\"}")
         requests.get = MagicMock(return_value=happy_response)
 
-        response = self.sut.get('mypath')
+        response = self.sut._get('mypath')
 
-        self.assertEqual('mydata', response)
+        self.assertEqual('mydata', response['data'])
         requests.get.assert_called_once()
         requests.get.assert_called_with('myaddressmypath', auth = ("mykey", "mysecret"))
 
@@ -27,14 +32,14 @@ class TestRancherApi(unittest.TestCase):
         denied_response.status_code = 403
         requests.get = MagicMock(return_value=denied_response)
         with self.assertRaises(requests.HTTPError):
-            response = self.sut.get("mypath")
+            response = self.sut._get("mypath")
 
     def test_get_with_500_raises_err(self):
         err_response = requests.Response()
         err_response.status_code = 500
         requests.get = MagicMock(return_value=err_response)
         with self.assertRaises(requests.HTTPError):
-            response = self.sut.get("mypath")
+            response = self.sut._get("mypath")
 
     def test_get_returns_invalid_json_raises_err(self):
         invalid_response = requests.Response()
@@ -42,16 +47,8 @@ class TestRancherApi(unittest.TestCase):
         invalid_response.raw = BytesIO(b"not json")
         requests.get = MagicMock(return_value=invalid_response)
         with self.assertRaises(RancherResponseError):
-            response = self.sut.get("mypath")
+            response = self.sut._get("mypath")
 
-    def test_get_returns_incomplete_json_raises_err(self):
-        incomplete_response = requests.Response()
-        incomplete_response.status_code = 200
-        incomplete_response.raw = BytesIO(b"{\"unexpectedstructure\":\"mydata\"}")
-        requests.get = MagicMock(return_value=incomplete_response)
-        with self.assertRaises(RancherResponseError):
-            response = self.sut.get("mypath")
-        
     def test_get_project_calls_get_with_project_arg(self):
         project = { 'name': 'My Project', 'id': 'p-asd123' }
         project_response = requests.Response()
@@ -168,7 +165,7 @@ class TestRancherApi(unittest.TestCase):
         requests.get.assert_called_with('myaddress/cluster?id=My cluster', auth = ("mykey", "mysecret"))
         requests.post.assert_called_once()
         requests.post.assert_called_with('myaddress/projects', auth = ("mykey", "mysecret"),
-                                            data = { 'name': 'My Project', 'clusterId': 'c-137' })
+                                            json = { 'name': 'My Project', 'clusterId': 'c-137' })
 
     def test_create_project_server_err_raises_err(self):
         cluster_response = requests.Response()
@@ -186,7 +183,7 @@ class TestRancherApi(unittest.TestCase):
         requests.get.assert_called_with('myaddress/cluster?id=My cluster', auth = ("mykey", "mysecret"))
         requests.post.assert_called_once()
         requests.post.assert_called_with('myaddress/projects', auth = ("mykey", "mysecret"),
-                                            data = { 'name': 'My Project', 'clusterId': 'c-137' })
+                                            json = { 'name': 'My Project', 'clusterId': 'c-137' })
 
     def test_create_project_looks_up_cluster_and_returns_new_project(self):
         cluster_response = requests.Response()
@@ -204,7 +201,7 @@ class TestRancherApi(unittest.TestCase):
         requests.get.assert_called_with('myaddress/cluster?id=My cluster', auth = ("mykey", "mysecret"))
         requests.post.assert_called_once()
         requests.post.assert_called_with('myaddress/projects', auth = ("mykey", "mysecret"),
-                                            data = { 'name': 'My Project', 'clusterId': 'c-137' })
+                                            json = { 'name': 'My Project', 'clusterId': 'c-137' })
 
         self.assertEqual(response['id'], 'p-123abc')
 

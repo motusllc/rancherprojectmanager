@@ -23,8 +23,8 @@ class RancherApi:
         return data
 
     def _post(self, path, body):
-        logging.debug(f"Sending POST request to {url}...")
         url = self.address + path
+        logging.debug(f"Sending POST request to {url}...")
         r = requests.post(url, auth = (self.key, self.__secret), json = body)
         r.raise_for_status()
         try:
