@@ -25,6 +25,7 @@ rancherprojectmanager:
     projectIdAnnotation: field.cattle.io/projectId                       # Defaults to this value
     defaultCluster: local                                                # Defaults to this value
     clusterNameAnnotation: rancher-project-mgmt.motus.com/cluster-name   # Defaults to this value
+    ownersAnnotation: rancher-project-mgmt.motus.com/owners              # Defaults to this value
 ```
 
 If you want to do something unusual in the container, you can also override the command altogether:
