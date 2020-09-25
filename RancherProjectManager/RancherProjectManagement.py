@@ -2,6 +2,7 @@ from kubernetes import client, config, watch
 import requests
 import logging
 import os
+from kubernetes.client.models.v1_namespace import V1Namespace
 from .RancherApi import RancherResponseError
 
 class RancherProjectManagement:
@@ -38,7 +39,7 @@ class RancherProjectManagement:
                 logging.exception("FATAL ERROR processing namespace event - raw event: " + str(ns_event))
                 raise
 
-    def process_namespace(self, namespace):
+    def process_namespace(self, namespace: V1Namespace):
         logging.info(f'Inspecting namespace {namespace.metadata.name}...')
 
         # We don't care if we don't see our annotation

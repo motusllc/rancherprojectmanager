@@ -1,3 +1,4 @@
+from typing import List, Dict
 import requests
 import logging
 import urllib.parse
@@ -5,12 +6,12 @@ from .RancherPrincipal import RancherPrincipal
 from json.decoder import JSONDecodeError
 
 class RancherApi:
-    def __init__(self, address, key, secret):
+    def __init__(self, address: str, key: str, secret: str):
         self.address = address
         self.key = key
         self.__secret = secret
 
-    def _get(self, path):
+    def _get(self, path: str) -> Dict:
         url = self.address + path
         logging.debug(f"Sending GET request to {url}...")
         r = requests.get(url, auth = (self.key, self.__secret))
@@ -22,7 +23,7 @@ class RancherApi:
         logging.debug(f"GET request returned payload: {data}")
         return data
 
-    def _post(self, path, body):
+    def _post(self, path: str, body: Dict) -> Dict:
         url = self.address + path
         logging.debug(f"Sending POST request to {url}...")
         r = requests.post(url, auth = (self.key, self.__secret), json = body)
@@ -34,7 +35,7 @@ class RancherApi:
         logging.debug(f"POST request returned payload: {json_obj}")
         return json_obj
 
-    def _delete(self, path):
+    def _delete(self, path: str) -> Dict:
         url = self.address + path
         logging.debug(f"Sending DELETE request to {url}...")
         r = requests.delete(url, auth = (self.key, self.__secret))
@@ -46,7 +47,7 @@ class RancherApi:
         logging.debug(f"DELETE request returned payload: {json_obj}")
         return json_obj
 
-    def get_project(self, name):
+    def get_project(self, name: str) -> Dict:
         path = '/projects?name=' + name
         projects = self._get(path)['data']
 
@@ -54,7 +55,7 @@ class RancherApi:
             raise RancherResponseError(self.address + path, projects)
         return next(iter(projects), None)
 
-    def create_project(self, name, cluster):
+    def create_project(self, name: str, cluster: str) -> Dict:
         if name is None or cluster is None:
             raise TypeError("Project and cluster must not be None")
         
@@ -70,36 +71,39 @@ class RancherApi:
         r = self._post('/projects', { 'name': name, 'clusterId': cluster_id })
         return r
 
-    def search_principal(self, owner):
+    def search_principal(self, owner: str) -> RancherPrincipal:
         if owner is None:
             raise TypeError("owner must not be None")
 
         response = self._post('/principals?action=search', { 'name': owner, 'principalType': None })
         try:
             matches = response['data']
-        except KeyError as e:
+            principal = RancherPrincipal(matches[0]) if len(matches) > 0 else None
+        except (KeyError, ValueError) as e:
             raise RancherResponseError('/principals?action=search', response) from e
 
-        return RancherPrincipal(matches[0]) if len(matches) > 0 else None
+        return principal
 
-    def get_project_owners(self, project_id):
+    def get_project_owners(self, project_id: str) -> List[RancherPrincipal]:
         if project_id is None:
             raise TypeError("project_id must not be None")
-        prtbs = self._get(f"/projectroletemplatebindings?projectId={project_id}&roleTemplateId=project-owner")['data']
-        principals = []
-        for prtb in prtbs:
-            id = prtb['groupPrincipalId'] if prtb['groupPrincipalId'] is not None else prtb['userPrincipalId']
-            url_safe_id = urllib.parse.quote_plus(id)
 
-            try:
-                principal = self._get(f"/principals/{url_safe_id}")
+        try:
+            url = f"/projectroletemplatebindings?projectId={project_id}&roleTemplateId=project-owner"
+            prtbs = self._get(url)['data']
+            principals = []
+            for prtb in prtbs:
+                id = prtb['groupPrincipalId'] if prtb['groupPrincipalId'] is not None else prtb['userPrincipalId']
+                url = f"/principals/{urllib.parse.quote_plus(id)}"
+                principal = self._get(url)
                 principals.append(RancherPrincipal(principal))
-            except requests.exceptions.HTTPError as e:
-                logging.error('Encountered error attempting to retrieve security principal information, my auth token may not have the required access!')
-                raise RancherResponseError(f"/principals/{url_safe_id}", None) from e
+        except (KeyError, requests.exceptions.HTTPError) as e:
+            logging.error('Encountered error attempting to retrieve security principal information, my auth token may not have the required access!')
+            raise RancherResponseError(url, None) from e
+
         return principals
 
-    def add_project_owner(self, project_id, owner):
+    def add_project_owner(self, project_id: str, owner: RancherPrincipal) -> Dict:
         if project_id is None or owner is None:
             raise TypeError("project_id and owner must not be None")
 
@@ -117,7 +121,7 @@ class RancherApi:
                                     'roleTemplateId': 'project-owner' })
         return resp
 
-    def remove_project_owner(self, project_id, owner):
+    def remove_project_owner(self, project_id: str, owner: RancherPrincipal) -> Dict:
         if project_id is None or owner is None:
             raise TypeError("project_id and owner must not be None")
 
@@ -133,5 +137,5 @@ class RancherApi:
         return resp
 
 class RancherResponseError(Exception):
-    def __init__(self, url, payload):
+    def __init__(self, url: str, payload: Dict):
         super().__init__(f"Unexpected response content from rancher at {url}: {payload}")

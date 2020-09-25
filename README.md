@@ -28,6 +28,8 @@ pip3 install -r requirements.txt
 ## Run Tests
 ```
 python3 -m unittest discover . test_*.py
+# With code coverage
+coverage run --source=./RancherProjectManager -m unittest discover && coverage report
 ```
 
 ## Running

@@ -1,5 +1,7 @@
+from typing import Dict
+
 class RancherPrincipal:
-    def __init__(self, json_data):
+    def __init__(self, json_data: Dict):
         try:
             self.id = json_data['id']
             self.type = json_data['principalType']
