@@ -41,11 +41,11 @@ chmod +x main.py
 
 # Full Options
 ```shell
-$ ./main.py --help
+$ ./main.py -h
 usage: main.py [-h] -a RANCHER_ADDR -k RANCHER_KEY [-s RANCHER_SECRET]
                [-t PROJECT_NAME_ANNOTATION] [-p PROJECT_ID_ANNOTATION]
                [-d DEFAULT_CLUSTER] [-c CLUSTER_NAME_ANNOTATION]
-               [-o OWNERS_ANNOTATION]
+               [-o OWNERS_ANNOTATION] [-w WORKLOAD_MANAGERS_ANNOTATION]
 
 Watches and annotates namespaces to assign them to Rancher projects
 
@@ -79,7 +79,12 @@ optional arguments:
                         (default: rancher-project-mgmt.motus.com/cluster-name)
   -o OWNERS_ANNOTATION, --owners-annotation OWNERS_ANNOTATION
                         The annotation that holds a comma-separated list of
-                        groups or usernames, who will be granted owner on the
-                        project for a namespace (default: rancher-project-
-                        mgmt.motus.com/owners)
+                        groups or usernames, who will be granted Project Owner
+                        on the project for a namespace (default: rancher-
+                        project-mgmt.motus.com/owners)
+  -w WORKLOAD_MANAGERS_ANNOTATION, --workload-managers-annotation WORKLOAD_MANAGERS_ANNOTATION
+                        The annotation that holds a comma-separated list of
+                        groups or usernames, who will be granted Manage
+                        Workloads on the project for a namespace (default:
+                        rancher-project-mgmt.motus.com/workload-managers)
 ```

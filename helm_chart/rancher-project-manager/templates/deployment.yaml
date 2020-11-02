@@ -42,6 +42,7 @@ spec:
             - --default-cluster={{ default "local" .Values.rancherprojectmanager.defaultCluster }}
             - --cluster-name-annotation={{ default "rancher-project-mgmt.motus.com/cluster-name" .Values.rancherprojectmanager.clusterNameAnnotation }}
             - --owners-annotation={{ default "rancher-project-mgmt.motus.com/owners" .Values.rancherprojectmanager.ownersAnnotation }}
+            - --workload-managers-annotation={{ default "rancher-project-mgmt.motus.com/workload-managers" .Values.rancherprojectmanager.workloadManagersAnnotation }}
           ports: []
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

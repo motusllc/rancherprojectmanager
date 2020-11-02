@@ -71,11 +71,11 @@ class RancherApi:
         r = self._post('/projects', { 'name': name, 'clusterId': cluster_id })
         return r
 
-    def search_principal(self, owner: str) -> RancherPrincipal:
-        if owner is None:
-            raise TypeError("owner must not be None")
+    def search_principal(self, name: str) -> RancherPrincipal:
+        if name is None:
+            raise TypeError("name must not be None")
 
-        response = self._post('/principals?action=search', { 'name': owner, 'principalType': None })
+        response = self._post('/principals?action=search', { 'name': name, 'principalType': None })
         try:
             matches = response['data']
             principal = RancherPrincipal(matches[0]) if len(matches) > 0 else None
@@ -84,12 +84,12 @@ class RancherApi:
 
         return principal
 
-    def get_project_owners(self, project_id: str) -> List[RancherPrincipal]:
-        if project_id is None:
-            raise TypeError("project_id must not be None")
+    def get_project_members(self, project_id: str, rolename: str) -> List[RancherPrincipal]:
+        if project_id is None or rolename is None:
+            raise TypeError("project_id and rolename must not be None")
 
         try:
-            url = f"/projectroletemplatebindings?projectId={project_id}&roleTemplateId=project-owner"
+            url = f"/projectroletemplatebindings?projectId={project_id}&roleTemplateId={rolename}"
             prtbs = self._get(url)['data']
             principals = []
             for prtb in prtbs:
@@ -103,37 +103,37 @@ class RancherApi:
 
         return principals
 
-    def add_project_owner(self, project_id: str, owner: RancherPrincipal) -> Dict:
-        if project_id is None or owner is None:
-            raise TypeError("project_id and owner must not be None")
+    def add_project_member(self, project_id: str, rolename: str, member: RancherPrincipal) -> Dict:
+        if project_id is None or member is None or rolename is None:
+            raise TypeError("project_id, member, and rolename must not be None")
 
-        id_key = 'groupPrincipalId' if owner.is_group else 'userPrincipalId'
+        id_key = 'groupPrincipalId' if member.is_group else 'userPrincipalId'
 
-        existing_owner_role_bindings = self._get(f"/projectroletemplatebindings?{id_key}={owner.id}&" + 
+        existing_member_role_bindings = self._get(f"/projectroletemplatebindings?{id_key}={member.id}&" + 
                                                     f"projectId={project_id}&" + 
-                                                    "roleTemplateId=project-owner")['data']
-        if len(existing_owner_role_bindings) > 0:
+                                                    f"roleTemplateId={rolename}")['data']
+        if len(existing_member_role_bindings) > 0:
             return # Already good-to-go
         
         resp = self._post('/projectroletemplatebindings', { 
                                     'projectId': f"{project_id}", 
-                                    id_key: owner.id,
-                                    'roleTemplateId': 'project-owner' })
+                                    id_key: member.id,
+                                    'roleTemplateId': rolename })
         return resp
 
-    def remove_project_owner(self, project_id: str, owner: RancherPrincipal) -> Dict:
-        if project_id is None or owner is None:
-            raise TypeError("project_id and owner must not be None")
+    def remove_project_member(self, project_id: str, rolename: str, member: RancherPrincipal) -> Dict:
+        if project_id is None or member is None or rolename is None:
+            raise TypeError("project_id, member, and rolename must not be None")
 
-        id_key = 'groupPrincipalId' if owner.is_group else 'userPrincipalId'
+        id_key = 'groupPrincipalId' if member.is_group else 'userPrincipalId'
 
-        existing_owner_role_bindings = self._get(f"/projectroletemplatebindings?{id_key}={owner.id}&" + 
+        existing_member_role_bindings = self._get(f"/projectroletemplatebindings?{id_key}={member.id}&" + 
                                                     f"projectId={project_id}&" + 
-                                                    "roleTemplateId=project-owner")['data']
-        if len(existing_owner_role_bindings) == 0:
+                                                    f"roleTemplateId={rolename}")['data']
+        if len(existing_member_role_bindings) == 0:
             return # Already good-to-go
         
-        resp = self._delete(f"/projectroletemplatebindings/{existing_owner_role_bindings[0]['id']}")
+        resp = self._delete(f"/projectroletemplatebindings/{existing_member_role_bindings[0]['id']}")
         return resp
 
 class RancherResponseError(Exception):

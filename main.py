@@ -29,7 +29,10 @@ def main():
             help='The annotation used to specify what cluster a project should be created in, if it doesn\'t already exist')
     parser.add_argument('-o', '--owners-annotation',
             default='rancher-project-mgmt.motus.com/owners',
-            help='The annotation that holds a comma-separated list of groups or usernames, who will be granted owner on the project for a namespace')
+            help='The annotation that holds a comma-separated list of groups or usernames, who will be granted Project Owner on the project for a namespace')
+    parser.add_argument('-w', '--workload-managers-annotation',
+            default='rancher-project-mgmt.motus.com/workload-managers',
+            help='The annotation that holds a comma-separated list of groups or usernames, who will be granted Manage Workloads on the project for a namespace')
 
     args = parser.parse_args()
     
@@ -47,7 +50,8 @@ def main():
                             args.project_id_annotation,
                             args.default_cluster,
                             args.cluster_name_annotation,
-                            args.owners_annotation)
+                            args.owners_annotation,
+                            args.workload_managers_annotation)
     projectManager.watch()
 
 if __name__ == "__main__":

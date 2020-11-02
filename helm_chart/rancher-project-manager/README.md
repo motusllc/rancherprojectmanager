@@ -18,14 +18,15 @@ ZSBjb2RlLCBkaWQgeW91Pwo= # echo mysecretvalue | base64
 Example values: 
 ```yaml
 rancherprojectmanager:
-    rancherAddress: https://rancher.sandbox.motus.com/v3                 # Required
-    rancherKey: token-abc123                                             # Required
-    secretName: myRancherKubeSecret                                      # Required
-    projectNameAnnotation: rancher-project-mgmt.motus.com/project-name   # Defaults to this value
-    projectIdAnnotation: field.cattle.io/projectId                       # Defaults to this value
-    defaultCluster: local                                                # Defaults to this value
-    clusterNameAnnotation: rancher-project-mgmt.motus.com/cluster-name   # Defaults to this value
-    ownersAnnotation: rancher-project-mgmt.motus.com/owners              # Defaults to this value
+    rancherAddress: https://rancher.sandbox.motus.com/v3                         # Required
+    rancherKey: token-abc123                                                     # Required
+    secretName: myRancherKubeSecret                                              # Required
+    projectNameAnnotation: rancher-project-mgmt.motus.com/project-name           # Defaults to this value
+    projectIdAnnotation: field.cattle.io/projectId                               # Defaults to this value
+    defaultCluster: local                                                        # Defaults to this value
+    clusterNameAnnotation: rancher-project-mgmt.motus.com/cluster-name           # Defaults to this value
+    ownersAnnotation: rancher-project-mgmt.motus.com/owners                      # Defaults to this value
+    workloadManagersAnnotation: rancher-project-mgmt.motus.com/workload-managers # Defaults to this value
 ```
 
 If you want to do something unusual in the container, you can also override the command altogether:

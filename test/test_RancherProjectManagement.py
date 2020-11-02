@@ -21,7 +21,8 @@ class TestRancherProjectManagement(unittest.TestCase):
                 'project-id-annotation',
                 'default-cluster',
                 'cluster-name-annotation',
-                'owners-annotation')
+                'owners-annotation',
+                'workloaders-annotation')
         self.sut.kubeapi = MagicMock()
 
 class TestProcessNamespace(TestRancherProjectManagement):
@@ -114,7 +115,7 @@ class TestProcessNamespace(TestRancherProjectManagement):
     def test_special_cluster_creates_project_in_special_cluster(self):
         namespace = V1Namespace(metadata=V1ObjectMeta(name='mynamespace', annotations={
             'project-name-annotation': 'my project',
-            'cluster-name-annotation': 'my-other-cluster',
+            'cluster-name-annotation': 'my-other-cluster'
         }))
         self.rancherMock.get_project = MagicMock(return_value=None)
         self.rancherMock.create_project = MagicMock(return_value={ 'id': 'p-123abc' })
@@ -130,127 +131,121 @@ class TestProcessNamespace(TestRancherProjectManagement):
 
         self.assertEqual(namespace.metadata.annotations['project-id-annotation'], 'p-123abc')
 
-    def test_new_owner_annotation_adds_owner(self):
+    def test_no_member_annotations_ignores_existing_members(self):
         namespace = V1Namespace(metadata=V1ObjectMeta(name='mynamespace', annotations={
             'project-name-annotation': 'my project',
-            'project-id-annotation': 'p-123abc',
-            'owners-annotation': 'jdoe',
+            'project-id-annotation': 'p-123abc'
         }))
-        jane = RancherPrincipal({ 'id': 'jdoe', 'name': 'Jane Doe', 'principalType': 'user' })
         self.rancherMock.get_project = MagicMock(return_value={ 'id': 'p-123abc' })
-        self.rancherMock.get_project_owners = MagicMock(return_value=[])
-        self.rancherMock.search_principal = MagicMock(return_value=jane)
-        self.rancherMock.add_project_owner = MagicMock()
+        self.sut.handle_project_role = MagicMock()
 
         self.sut.process_namespace(namespace)
 
         self.rancherMock.get_project.assert_called_once()
         self.rancherMock.get_project.assert_called_with('my project')
-        self.rancherMock.get_project_owners.assert_called_once()
-        self.rancherMock.get_project_owners.assert_called_with('p-123abc')
+        self.sut.handle_project_role.assert_not_called()
+
+    def test_owner_annotations_handles_owners(self):
+        namespace = V1Namespace(metadata=V1ObjectMeta(name='mynamespace', annotations={
+            'project-name-annotation': 'my project',
+            'project-id-annotation': 'p-123abc',
+            'owners-annotation': 'jdoe,ssmith'
+        }))
+        self.rancherMock.get_project = MagicMock(return_value={ 'id': 'p-123abc' })
+        self.sut.handle_project_role = MagicMock()
+
+        self.sut.process_namespace(namespace)
+
+        self.rancherMock.get_project.assert_called_once()
+        self.rancherMock.get_project.assert_called_with('my project')
+        self.sut.handle_project_role.assert_called_with('mynamespace', 'p-123abc', 'project-owner', ['jdoe','ssmith'])
+
+    def test_workloaders_annotations_handles_workloaders(self):
+        namespace = V1Namespace(metadata=V1ObjectMeta(name='mynamespace', annotations={
+            'project-name-annotation': 'my project',
+            'project-id-annotation': 'p-123abc',
+            'workloaders-annotation': 'jdoe,ssmith'
+        }))
+        self.rancherMock.get_project = MagicMock(return_value={ 'id': 'p-123abc' })
+        self.sut.handle_project_role = MagicMock()
+
+        self.sut.process_namespace(namespace)
+
+        self.rancherMock.get_project.assert_called_once()
+        self.rancherMock.get_project.assert_called_with('my project')
+        self.sut.handle_project_role.assert_called_with('mynamespace', 'p-123abc', 'workloads-manage', ['jdoe','ssmith'])
+
+class TestHandleProjectRole(TestRancherProjectManagement):
+    def test_new_owner_adds_owner(self):
+        jane = RancherPrincipal({ 'id': 'jdoe', 'name': 'Jane Doe', 'principalType': 'user' })
+        self.rancherMock.get_project_members = MagicMock(return_value=[])
+        self.rancherMock.search_principal = MagicMock(return_value=jane)
+        self.rancherMock.add_project_member = MagicMock()
+
+        self.sut.handle_project_role('mynamespace', 'p-123abc', 'my-role', ['jdoe'])
+
+        self.rancherMock.get_project_members.assert_called_once()
+        self.rancherMock.get_project_members.assert_called_with('p-123abc', 'my-role')
         self.rancherMock.search_principal.assert_called_once()
         self.rancherMock.search_principal.assert_called_with('jdoe')
-        self.rancherMock.add_project_owner.assert_called_once()
-        self.rancherMock.add_project_owner.assert_called_with('p-123abc', jane)
+        self.rancherMock.add_project_member.assert_called_once()
+        self.rancherMock.add_project_member.assert_called_with('p-123abc', 'my-role', jane)
 
 
     def test_second_owner_adds_new(self):
-        namespace = V1Namespace(metadata=V1ObjectMeta(name='mynamespace', annotations={
-            'project-name-annotation': 'my project',
-            'project-id-annotation': 'p-123abc',
-            'owners-annotation': 'aaardvark,jdoe',
-        }))
         jane = RancherPrincipal({ 'id': 'jdoe', 'name': 'Jane Doe', 'principalType': 'user' })
         alex = RancherPrincipal({ 'id': 'aaardvark', 'name': 'Alex Aardvark', 'principalType': 'user' })
-        self.rancherMock.get_project = MagicMock(return_value={ 'id': 'p-123abc' })
         self.rancherMock.search_principal = MagicMock()
         self.rancherMock.search_principal.side_effect = lambda x: jane if x == 'jdoe' else alex if x == 'aaardvark' else None
-        self.rancherMock.get_project_owners = MagicMock(return_value=[ jane ])
-        self.rancherMock.add_project_owner = MagicMock()
+        self.rancherMock.get_project_members = MagicMock(return_value=[ jane ])
+        self.rancherMock.add_project_member = MagicMock()
 
-        self.sut.process_namespace(namespace)
+        self.sut.handle_project_role('mynamespace', 'p-123abc', 'my-role', [ 'jdoe', 'aaardvark' ])
 
-        self.rancherMock.get_project.assert_called_once()
-        self.rancherMock.get_project.assert_called_with('my project')
-        self.rancherMock.get_project_owners.assert_called_once()
-        self.rancherMock.get_project_owners.assert_called_with('p-123abc')
+        self.rancherMock.get_project_members.assert_called_once()
+        self.rancherMock.get_project_members.assert_called_with('p-123abc', 'my-role')
         self.assertEqual(self.rancherMock.search_principal.call_count, 2)
-        self.rancherMock.search_principal.assert_has_calls([call('aaardvark'), call('jdoe')])
-        self.rancherMock.add_project_owner.assert_called_once()
-        self.rancherMock.add_project_owner.assert_called_with('p-123abc', alex)
+        self.rancherMock.search_principal.assert_has_calls([call('jdoe'), call('aaardvark')])
+        self.rancherMock.add_project_member.assert_called_once()
+        self.rancherMock.add_project_member.assert_called_with('p-123abc', 'my-role', alex)
 
-    def test_change_second_owner_add_new_and_remove_old(self):
-        namespace = V1Namespace(metadata=V1ObjectMeta(name='mynamespace', annotations={
-            'project-name-annotation': 'my project',
-            'project-id-annotation': 'p-123abc',
-            'owners-annotation': 'aaardvark,ssmith',
-        }))
+    def test_change_second_member_add_new_and_remove_old(self):
         jane = RancherPrincipal({ 'id': 'jdoe', 'name': 'Jane Doe', 'principalType': 'user' })
         alex = RancherPrincipal({ 'id': 'aaardvark', 'name': 'Alex Aardvark', 'principalType': 'user' })
         sally = RancherPrincipal({ 'id': 'ssmith', 'name': 'Sally Smith', 'principalType': 'user' })
-        self.rancherMock.get_project = MagicMock(return_value={ 'id': 'p-123abc' })
         self.rancherMock.search_principal = MagicMock()
         self.rancherMock.search_principal.side_effect = lambda x: sally if x == 'ssmith' else alex if x == 'aaardvark' else None
-        self.rancherMock.get_project_owners = MagicMock(return_value=[ alex, jane ])
-        self.rancherMock.add_project_owner = MagicMock()
-        self.rancherMock.remove_project_owner = MagicMock()
+        self.rancherMock.get_project_members = MagicMock(return_value=[ alex, jane ])
+        self.rancherMock.add_project_member = MagicMock()
+        self.rancherMock.remove_project_member = MagicMock()
 
-        self.sut.process_namespace(namespace)
+        self.sut.handle_project_role('mynamespace', 'p-123abc', 'my-role', ['ssmith', 'aaardvark'])
 
-        self.rancherMock.get_project.assert_called_once()
-        self.rancherMock.get_project.assert_called_with('my project')
-        self.rancherMock.get_project_owners.assert_called_once()
-        self.rancherMock.get_project_owners.assert_called_with('p-123abc')
+        self.rancherMock.get_project_members.assert_called_once()
+        self.rancherMock.get_project_members.assert_called_with('p-123abc', 'my-role')
         self.assertEqual(self.rancherMock.search_principal.call_count, 2)
-        self.rancherMock.search_principal.assert_has_calls([call('aaardvark'), call('ssmith')])
-        self.rancherMock.add_project_owner.assert_called_once()
-        self.rancherMock.add_project_owner.assert_called_with('p-123abc', sally)
-        self.rancherMock.remove_project_owner.assert_called_once()
-        self.rancherMock.remove_project_owner.assert_called_with('p-123abc', jane)
+        self.rancherMock.search_principal.assert_has_calls([call('ssmith'), call('aaardvark')])
+        self.rancherMock.add_project_member.assert_called_once()
+        self.rancherMock.add_project_member.assert_called_with('p-123abc', 'my-role', sally)
+        self.rancherMock.remove_project_member.assert_called_once()
+        self.rancherMock.remove_project_member.assert_called_with('p-123abc', 'my-role', jane)
 
     def test_unknown_owner_skips(self):
-        namespace = V1Namespace(metadata=V1ObjectMeta(name='mynamespace', annotations={
-            'project-name-annotation': 'my project',
-            'project-id-annotation': 'p-123abc',
-            'owners-annotation': 'aaardvark,jdoe',
-        }))
         jane = RancherPrincipal({ 'id': 'jdoe', 'name': 'Jane Doe', 'principalType': 'user' })
-        self.rancherMock.get_project = MagicMock(return_value={ 'id': 'p-123abc' })
         self.rancherMock.search_principal = MagicMock()
         self.rancherMock.search_principal.side_effect = lambda x: jane if x == 'jdoe' else None
-        self.rancherMock.get_project_owners = MagicMock(return_value=[ jane ])
-        self.rancherMock.add_project_owner = MagicMock()
-        self.rancherMock.remove_project_owner = MagicMock()
+        self.rancherMock.get_project_members = MagicMock(return_value=[ jane ])
+        self.rancherMock.add_project_member = MagicMock()
+        self.rancherMock.remove_project_member = MagicMock()
 
-        self.sut.process_namespace(namespace)
+        self.sut.handle_project_role('mynamespace', 'p-123abc', 'my-role', ['jdoe', 'aaardvark'])
 
-        self.rancherMock.get_project.assert_called_once()
-        self.rancherMock.get_project.assert_called_with('my project')
-        self.rancherMock.get_project_owners.assert_called_once()
-        self.rancherMock.get_project_owners.assert_called_with('p-123abc')
+        self.rancherMock.get_project_members.assert_called_once()
+        self.rancherMock.get_project_members.assert_called_with('p-123abc', 'my-role')
         self.assertEqual(self.rancherMock.search_principal.call_count, 2)
-        self.rancherMock.search_principal.assert_has_calls([call('aaardvark'), call('jdoe')])
-        self.rancherMock.add_project_owner.assert_not_called()
-        self.rancherMock.remove_project_owner.assert_not_called()
-
-    def test_no_annotation_ignores_existing_owners(self):
-        namespace = V1Namespace(metadata=V1ObjectMeta(name='mynamespace', annotations={
-            'project-name-annotation': 'my project',
-            'project-id-annotation': 'p-123abc',
-        }))
-        alex = RancherPrincipal({ 'id': 'aaardvark', 'name': 'Alex Aardvark', 'principalType': 'user' })
-        sally = RancherPrincipal({ 'id': 'ssmith', 'name': 'Sally Smith', 'principalType': 'user' })
-        self.rancherMock.get_project = MagicMock(return_value={ 'id': 'p-123abc' })
-        self.rancherMock.get_project_owners = MagicMock(return_value=[ alex, sally ])
-        self.rancherMock.add_project_owner = MagicMock()
-        self.rancherMock.remove_project_owner = MagicMock()
-
-        self.sut.process_namespace(namespace)
-
-        self.rancherMock.get_project.assert_called_once()
-        self.rancherMock.get_project.assert_called_with('my project')
-        self.rancherMock.add_project_owner.assert_not_called()
-        self.rancherMock.remove_project_owner.assert_not_called()
+        self.rancherMock.search_principal.assert_has_calls([call('jdoe'), call('aaardvark')])
+        self.rancherMock.add_project_member.assert_not_called()
+        self.rancherMock.remove_project_member.assert_not_called()
 
 class TestWatch(TestRancherProjectManagement):
     def test_no_namespaces_does_nothing_and_watches(self):
