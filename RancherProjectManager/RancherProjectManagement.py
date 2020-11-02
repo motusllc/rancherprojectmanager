@@ -93,13 +93,13 @@ class RancherProjectManagement:
             resolved_members.append(resolved_member)
         existing_members = self.rancher.get_project_members(project_id, rolename)
         
-        new_memers = set(resolved_members).difference(existing_members)
-        old_memers = set(existing_members).difference(resolved_members)
+        new_members = set(resolved_members).difference(existing_members)
+        old_members = set(existing_members).difference(resolved_members)
 
-        for member in new_memers:
+        for member in new_members:
             resp = self.rancher.add_project_member(project_id, rolename, member)
             logging.info(f'Added {member.type} {member.name} as an owner for project {project_id} over namespace {namespace}')
 
-        for member in old_memers:
+        for member in old_members:
             resp = self.rancher.remove_project_member(project_id, rolename, member)
             logging.info(f'Removed {member.type} {member.name} as an owner for project {project_id} over namespace {namespace}')
