@@ -98,8 +98,8 @@ class RancherProjectManagement:
 
         for member in new_members:
             resp = self.rancher.add_project_member(project_id, rolename, member)
-            logging.info(f'Added {member.type} {member.name} as an owner for project {project_id} over namespace {namespace}')
+            logging.info(f'Added {member.type} {member.name} as an {rolename} for project {project_id} over namespace {namespace}')
 
         for member in old_members:
             resp = self.rancher.remove_project_member(project_id, rolename, member)
-            logging.info(f'Removed {member.type} {member.name} as an owner for project {project_id} over namespace {namespace}')
+            logging.info(f'Removed {member.type} {member.name} as an {rolename} for project {project_id} over namespace {namespace}')
