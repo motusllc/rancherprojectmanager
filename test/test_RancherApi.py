@@ -322,11 +322,11 @@ class TestSearchPrincipal(TestRancherApi):
 
         self.sut._post.assert_not_called()
 
-class TestGetProjectOwners(TestRancherApi):
-    def test_gets_owners(self):
+class TestGetProjectMembers(TestRancherApi):
+    def test_gets_members(self):
         self.sut._get = MagicMock()
         self.sut._get.side_effect = lambda x: {
-            '/projectroletemplatebindings?projectId=p-abc123&roleTemplateId=project-owner':
+            '/projectroletemplatebindings?projectId=p-abc123&roleTemplateId=my-role':
                 { 'data': [ { 'groupPrincipalId': 'developers', 'userPrincipalId': None },
                             { 'groupPrincipalId': None, 'userPrincipalId': 'jdoe' }]},
             '/principals/jdoe':
@@ -335,11 +335,11 @@ class TestGetProjectOwners(TestRancherApi):
                 { 'id': 'developers', 'name': 'Developers', 'principalType': 'group' }
             }[x]
 
-        response = self.sut.get_project_owners('p-abc123')
+        response = self.sut.get_project_members('p-abc123', 'my-role')
 
         self.assertEqual(3, self.sut._get.call_count)
         self.sut._get.assert_has_calls([
-            call('/projectroletemplatebindings?projectId=p-abc123&roleTemplateId=project-owner'),
+            call('/projectroletemplatebindings?projectId=p-abc123&roleTemplateId=my-role'),
             call('/principals/developers'),
             call('/principals/jdoe')])
         self.assertEqual(2, len(response))
@@ -352,76 +352,79 @@ class TestGetProjectOwners(TestRancherApi):
         self.assertEqual('user', response[1].type)
         self.assertEqual(False, response[1].is_group)
 
-    def test_no_owners_returns_empty_list(self):
+    def test_no_members_returns_empty_list(self):
         self.sut._get = MagicMock(return_value={ 'data': []})
 
-        response = self.sut.get_project_owners('p-abc123')
+        response = self.sut.get_project_members('p-abc123', 'my-role')
 
         self.sut._get.assert_called_once()
-        self.sut._get.assert_called_with('/projectroletemplatebindings?projectId=p-abc123&roleTemplateId=project-owner')
+        self.sut._get.assert_called_with('/projectroletemplatebindings?projectId=p-abc123&roleTemplateId=my-role')
         self.assertEqual(0, len(response))
 
-    def test_malformed_owner_throws_err(self):
+    def test_malformed_member_throws_err(self):
         self.sut._get = MagicMock(return_value={ 'data': [{ 'bad data': 'bad value' }]})
 
         with self.assertRaises(RancherResponseError):
-            response = self.sut.get_project_owners('p-abc123')
+            response = self.sut.get_project_members('p-abc123', 'my-role')
 
         self.sut._get.assert_called_once()
-        self.sut._get.assert_called_with('/projectroletemplatebindings?projectId=p-abc123&roleTemplateId=project-owner')
+        self.sut._get.assert_called_with('/projectroletemplatebindings?projectId=p-abc123&roleTemplateId=my-role')
     
     def test_none_project_throws_err(self):
         self.sut._get = MagicMock()
 
         with self.assertRaises(TypeError):
-            response = self.sut.get_project_owners(None)
+            response = self.sut.get_project_members(None, 'my-role')
+
+        with self.assertRaises(TypeError):
+            response = self.sut.get_project_members('p-abc123', None)
 
         self.sut._get.assert_not_called()
 
-class TestAddProjectOwner(TestRancherApi):
-    def test_add_new_owner_checks_and_adds(self):
+class TestAddProjectMember(TestRancherApi):
+    def test_add_new_member_checks_and_adds(self):
         resp = { 'data', 'value' }
         self.sut._get = MagicMock(return_value={ 'data': [] })
         self.sut._post = MagicMock(return_value=resp)
         jane = RancherPrincipal({ 'id': 'jdoe', 'name': 'Jane Doe', 'principalType': 'user' })
 
-        response = self.sut.add_project_owner('p-abc123', jane)
+        response = self.sut.add_project_member('p-abc123', 'my-role', jane)
 
         self.sut._get.assert_called_once()
-        self.sut._get.assert_called_with('/projectroletemplatebindings?userPrincipalId=jdoe&projectId=p-abc123&roleTemplateId=project-owner')
+        self.sut._get.assert_called_with('/projectroletemplatebindings?userPrincipalId=jdoe&projectId=p-abc123&roleTemplateId=my-role')
         self.sut._post.assert_called_once()
         self.sut._post.assert_called_with('/projectroletemplatebindings', {
                                 'projectId': 'p-abc123', 
                                 'userPrincipalId': 'jdoe',
-                                'roleTemplateId': 'project-owner' })
+                                'roleTemplateId': 'my-role' })
         self.assertEqual(resp, response)
 
-    def test_add_new_group_owner_checks_and_adds(self):
+    def test_add_new_group_member_checks_and_adds(self):
         resp = { 'data', 'value' }
         self.sut._get = MagicMock(return_value={ 'data': [] })
         self.sut._post = MagicMock(return_value=resp)
         devs = RancherPrincipal({ 'id': 'developers', 'name': 'Developers', 'principalType': 'group' })
 
-        response = self.sut.add_project_owner('p-abc123', devs)
+        response = self.sut.add_project_member('p-abc123', 'my-role', devs)
 
         self.sut._get.assert_called_once()
-        self.sut._get.assert_called_with('/projectroletemplatebindings?groupPrincipalId=developers&projectId=p-abc123&roleTemplateId=project-owner')
+        self.sut._get.assert_called_with('/projectroletemplatebindings?groupPrincipalId=developers&projectId=p-abc123&roleTemplateId=my-role')
         self.sut._post.assert_called_once()
         self.sut._post.assert_called_with('/projectroletemplatebindings', {
                                 'projectId': 'p-abc123', 
                                 'groupPrincipalId': 'developers',
-                                'roleTemplateId': 'project-owner' })
+                                'roleTemplateId': 'my-role' })
         self.assertEqual(resp, response)
 
-    def test_owner_already_present_does_nothing(self):
+    def test_member_already_present_does_nothing(self):
         self.sut._get = MagicMock(return_value={ 'data': [ { 'userPrincipalId': 'jdoe' } ] })
         self.sut._post = MagicMock()
         jane = RancherPrincipal({ 'id': 'jdoe', 'name': 'Jane Doe', 'principalType': 'user' })
 
-        response = self.sut.add_project_owner('p-abc123', jane)
+        response = self.sut.add_project_member('p-abc123', 'my-role', jane)
 
         self.sut._get.assert_called_once()
-        self.sut._get.assert_called_with('/projectroletemplatebindings?userPrincipalId=jdoe&projectId=p-abc123&roleTemplateId=project-owner')
+        self.sut._get.assert_called_with('/projectroletemplatebindings?userPrincipalId=jdoe&projectId=p-abc123&roleTemplateId=my-role')
         self.sut._post.assert_not_called()
 
     def test_args_none_throws_err(self):
@@ -430,53 +433,56 @@ class TestAddProjectOwner(TestRancherApi):
         jane = RancherPrincipal({ 'id': 'jdoe', 'name': 'Jane Doe', 'principalType': 'user' })
 
         with self.assertRaises(TypeError):
-            response = self.sut.add_project_owner(None, jane)
+            response = self.sut.add_project_member(None, 'my-role', jane)
 
         with self.assertRaises(TypeError):
-            response = self.sut.add_project_owner('p-123abc', None)
+            response = self.sut.add_project_member('p-123abc', None, jane)
+
+        with self.assertRaises(TypeError):
+            response = self.sut.add_project_member('p-123abc', 'my-role', None)
         
         self.sut._get.assert_not_called()
         self.sut._post.assert_not_called()
 
         
-class TestRemoveProjectOwner(TestRancherApi):
-    def test_remove_owner_checks_and_removes(self):
+class TestRemoveProjectMember(TestRancherApi):
+    def test_remove_member_checks_and_removes(self):
         resp = { 'data', 'value' }
         self.sut._get = MagicMock(return_value={ 'data': [ { 'id': 'ptrb-xyz' } ] })
         self.sut._delete = MagicMock(return_value=resp)
         jane = RancherPrincipal({ 'id': 'jdoe', 'name': 'Jane Doe', 'principalType': 'user' })
 
-        response = self.sut.remove_project_owner('p-abc123', jane)
+        response = self.sut.remove_project_member('p-abc123', 'my-role', jane)
 
         self.sut._get.assert_called_once()
-        self.sut._get.assert_called_with('/projectroletemplatebindings?userPrincipalId=jdoe&projectId=p-abc123&roleTemplateId=project-owner')
+        self.sut._get.assert_called_with('/projectroletemplatebindings?userPrincipalId=jdoe&projectId=p-abc123&roleTemplateId=my-role')
         self.sut._delete.assert_called_once()
         self.sut._delete.assert_called_with('/projectroletemplatebindings/ptrb-xyz')
         self.assertEqual(resp, response)
 
-    def test_remove_group_owner_checks_and_removes(self):
+    def test_remove_group_member_checks_and_removes(self):
         resp = { 'data', 'value' }
         self.sut._get = MagicMock(return_value={ 'data': [ { 'id': 'ptrb-xyz' } ] })
         self.sut._delete = MagicMock(return_value=resp)
         devs = RancherPrincipal({ 'id': 'developers', 'name': 'Developers', 'principalType': 'group' })
 
-        response = self.sut.remove_project_owner('p-abc123', devs)
+        response = self.sut.remove_project_member('p-abc123', 'my-role', devs)
 
         self.sut._get.assert_called_once()
-        self.sut._get.assert_called_with('/projectroletemplatebindings?groupPrincipalId=developers&projectId=p-abc123&roleTemplateId=project-owner')
+        self.sut._get.assert_called_with('/projectroletemplatebindings?groupPrincipalId=developers&projectId=p-abc123&roleTemplateId=my-role')
         self.sut._delete.assert_called_once()
         self.sut._delete.assert_called_with('/projectroletemplatebindings/ptrb-xyz')
         self.assertEqual(resp, response)
 
-    def test_owner_not_present_does_nothing(self):
+    def test_member_not_present_does_nothing(self):
         self.sut._get = MagicMock(return_value={ 'data': [] })
         self.sut._delete = MagicMock()
         jane = RancherPrincipal({ 'id': 'jdoe', 'name': 'Jane Doe', 'principalType': 'user' })
 
-        response = self.sut.remove_project_owner('p-abc123', jane)
+        response = self.sut.remove_project_member('p-abc123', 'my-role', jane)
 
         self.sut._get.assert_called_once()
-        self.sut._get.assert_called_with('/projectroletemplatebindings?userPrincipalId=jdoe&projectId=p-abc123&roleTemplateId=project-owner')
+        self.sut._get.assert_called_with('/projectroletemplatebindings?userPrincipalId=jdoe&projectId=p-abc123&roleTemplateId=my-role')
         self.sut._delete.assert_not_called()
 
     def test_args_none_throws_err(self):
@@ -485,10 +491,13 @@ class TestRemoveProjectOwner(TestRancherApi):
         jane = RancherPrincipal({ 'id': 'jdoe', 'name': 'Jane Doe', 'principalType': 'user' })
 
         with self.assertRaises(TypeError):
-            response = self.sut.remove_project_owner(None, jane)
+            response = self.sut.remove_project_member(None, 'my-role', jane)
 
         with self.assertRaises(TypeError):
-            response = self.sut.remove_project_owner('p-123abc', None)
+            response = self.sut.remove_project_member('p-123abc', None, jane)
+
+        with self.assertRaises(TypeError):
+            response = self.sut.remove_project_member('p-123abc', 'my-role', None)
         
         self.sut._get.assert_not_called()
         self.sut._delete.assert_not_called()
