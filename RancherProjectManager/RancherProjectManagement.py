@@ -1,5 +1,6 @@
 from kubernetes import client, config, watch
 from kubernetes.client.models.v1_namespace import V1Namespace
+from kubernetes.client.exceptions import ApiException
 import logging
 import requests
 from typing import List
@@ -30,16 +31,25 @@ class RancherProjectManagement:
 
         # Watch for more changes going forward
         logging.info("Watching for additional namespace changes")
-        watcher = watch.Watch()
-        for ns_event in watcher.stream(self.kubeapi.list_namespace):
-            try:
-                if ns_event['type'] == 'MODIFIED':
-                    self.process_namespace(ns_event['object'])
-            except (requests.HTTPError, RancherResponseError, ValueError, KeyError) as e:
-                logging.exception("ERROR processing namespace event - raw event: " + str(ns_event))
-            except Exception as e:
-                logging.exception("FATAL ERROR processing namespace event - raw event: " + str(ns_event))
-                raise
+        while(True):
+            try: 
+                watcher = watch.Watch()
+                for ns_event in watcher.stream(self.kubeapi.list_namespace):
+                    try:
+                        if ns_event['type'] == 'MODIFIED':
+                            self.process_namespace(ns_event['object'])
+                    except (requests.HTTPError, RancherResponseError, ValueError, KeyError) as e:
+                        logging.exception("ERROR processing namespace event - raw event: " + str(ns_event))
+                    except Exception as e:
+                        logging.exception("FATAL ERROR processing namespace event - raw event: " + str(ns_event))
+                        raise
+            except ApiException as e:
+                if str(e.status) == '410':
+                    logging.warning('Kubernetes API resources expired - reestablishing watch')
+                    continue
+                else:
+                    logging.exception(f'Kubernetes API fatal error: {e.status}, {e.reason}')
+                    raise
 
     def process_namespace(self, namespace: V1Namespace):
         logging.info(f'Inspecting namespace {namespace.metadata.name}...')
