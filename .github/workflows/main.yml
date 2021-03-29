@@ -40,10 +40,10 @@ jobs:
     - name: Test with unittest
       run: |
         python3 -m unittest discover . test_*.py
-        
+
     - name: Extract branch name
-      shell: bash
-      run: echo "::set-env name=BRANCH_NAME::$(echo ${GITHUB_REF#refs/heads/} | sed 's/\//_/g')"
+      id: buildvars
+      run: echo ::set-output name=BRANCH_NAME::${GITHUB_REF#refs/*/}
     - name: Build and push Docker images
       uses: docker/build-push-action@v1.1.0
       with:
@@ -51,7 +51,7 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
         repository: motus/rancherprojectmanager
         tag_with_ref: true
-        tags: ${{env.BRANCH_NAME}}-${{github.RUN_NUMBER}},${{env.BRANCH_NAME}}-latest
+        tags: ${{steps.buildvars.outputs.BRANCH_NAME}}-${{github.RUN_NUMBER}},${{steps.buildvars.outputs.BRANCH_NAME}}-latest
         always_pull: true
         add_git_labels: true
         # Only push images for branch builds
