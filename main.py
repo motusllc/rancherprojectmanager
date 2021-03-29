@@ -3,6 +3,7 @@
 from RancherProjectManager import *
 import argparse
 import logging
+from kubernetes.client.exceptions import ApiException
 
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -52,7 +53,16 @@ def main():
                             args.cluster_name_annotation,
                             args.owners_annotation,
                             args.workload_managers_annotation)
-    projectManager.watch()
+    while(True):
+        try: 
+            projectManager.watch()
+        except ApiException as e:
+            if str(e.status) == '410':
+                logging.warning('Kubernetes API resources expired - reestablishing watch')
+                continue
+            else:
+                logging.exception(f'Kubernetes API fatal error: {e.status}, {e.reason}')
+                raise
 
 if __name__ == "__main__":
     main()
